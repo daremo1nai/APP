@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>移动端登录原型设计</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-body: #E5E7EB;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --input-bg: #F3F4F6;
+            --input-border: #D1D5DB;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 现代登录卡片容器（替代原有的手机外壳） */
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            height: 100%;
+            max-height: 720px;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 原型主界面 */
+        .screen {
+            flex: 1;
+            padding: 40px 30px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+            position: relative;
+        }
+
+        .header {
+            margin-top: 60px;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            color: var(--text-muted);
+            font-size: 14px;
+            transition: all 0.2s ease;
+            pointer-events: none;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 24px 16px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--input-bg);
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        /* 浮动标签的交互设计 */
+        .input-group input:focus,
+        .input-group input:not(:placeholder-shown) {
+            background: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .input-group input:focus + label,
+        .input-group input:not(:placeholder-shown) + label {
+            top: 8px;
+            font-size: 11px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            font-size: 13px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .forgot-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-login:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-login:active {
+            transform: translateY(1px);
+        }
+
+        /* 底部注册提示 */
+        .footer {
+            margin-top: auto;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-muted);
+            padding-bottom: 20px;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* 加载状态及提示动画 */
+        .btn-text {
+            transition: opacity 0.2s;
+        }
+        .btn-loading .btn-text {
+            opacity: 0;
+        }
+        .spinner {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            opacity: 0;
+            animation: spin 0.8s linear infinite;
+        }
+        .btn-loading .spinner {
+            opacity: 1;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .toast {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: #10B981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* 响应式适配：移动端仿真或真实小屏幕设备 */
+        @media (max-width: 480px) {
+            body {
+                background-color: #fff; /* 移动端白底，与卡片融合更自然 */
+            }
+
+            .login-container {
+                max-width: 100%;
+                max-height: 100%;
+                border-radius: 0;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 登录主控模块 -->
+    <div class="login-container">
+        <div class="screen">
+            <div class="toast" id="toast">登录成功！</div>
+            
+            <div class="header">
+                <h1>欢迎回来</h1>
+                <p>请输入您的账号和密码进体验</p>
+            </div>
+
+            <div class="form-container">
+                <div class="input-group">
+                    <input type="text" id="username" placeholder=" ">
+                    <label for="username">账号 / 手机号</label>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="password" placeholder=" ">
+                    <label for="password">密码</label>
+                </div>
+
+                <div class="actions">
+                    <label class="checkbox-container">
+                        <input type="checkbox" checked>
+                        <span>记住我</span>
+                    </label>
+                    <a href="#" class="forgot-link">忘记密码?</a>
+                </div>
+
+                <button class="btn-login" id="loginBtn" onclick="handleLogin()">
+                    <span class="btn-text">登 录</span>
+                    <div class="spinner"></div>
+                </button>
+            </div>
+
+            <div class="footer">
+                还没有账号？ <a href="#">立即注册</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleLogin() {
+            const btn = document.getElementById('loginBtn');
+            const toast = document.getElementById('toast');
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            // 如果已经处于loading状态，阻止重复点击
+            if (btn.classList.contains('btn-loading')) return;
+
+            // 简单非空校验增强体验
+            if(!user || !pass) {
+                toast.textContent = "请输入账号和密码";
+                toast.style.background = "#EF4444"; // 红色警告
+                showToast(toast);
+                return;
+            }
+
+            // 添加loading动效
+            btn.classList.add('btn-loading');
+            
+            // 模拟接口请求
+            setTimeout(() => {
+                btn.classList.remove('btn-loading');
+                toast.textContent = "登录成功！欢迎回来";
+                toast.style.background = "#10B981"; // 绿色成功
+                showToast(toast);
+            }, 1500);
+        }
+
+        function showToast(toast) {
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
