@@ -1,0 +1,457 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二战历史地图集 - 主界面</title>
+    <style>
+        :root {
+            --primary: #7a3b31;
+            --primary-hover: #5c2a23;
+            --bg-body: #e4d8c6;
+            --text-main: #3e362c;
+            --text-muted: #6e6150;
+            --panel-bg: #f4ebd8;
+            --border-color: #c4b69d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Georgia", "Times New Roman", serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            background-image: url('data:image/svg+xml;utf8,<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.05"/></svg>');
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* 顶部导航 */
+        .top-nav {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-title h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .nav-title .subtitle {
+            font-size: 16px;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-title .subtitle::before,
+        .nav-title .subtitle::after {
+            content: '';
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            width: 250px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            font-size: 14px;
+            color: var(--text-main);
+            margin-left: 8px;
+        }
+
+        /* 主体内容区 */
+        .main-content {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+
+        /* 左侧列：地图、时间轴、日志 */
+        .left-col {
+            flex: 7;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 500px;
+            background: #a9cfd0; /* 模拟水域颜色 */
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 模拟一个世界地图占位图 */
+        .map-placeholder {
+            font-size: 24px;
+            color: #588081;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(244, 235, 216, 0.9);
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        /* 时间轴面板 */
+        .timeline-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 4px;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .view-toggles {
+            display: flex;
+            gap: 5px;
+        }
+
+        .view-toggles button {
+            padding: 4px 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .view-toggles button.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .timeline-track-container {
+            position: relative;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 10px;
+        }
+
+        .year-marks {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            position: absolute;
+            top: 0;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .timeline-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .timeline-controls button {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 5px 15px;
+            cursor: pointer;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .timeline-controls .play-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+        }
+
+        /* 事件日志面板 */
+        .log-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 4px;
+            flex: 1;
+        }
+
+        .log-header {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .log-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(196, 182, 157, 0.4);
+            font-size: 14px;
+        }
+        .log-item:hover {
+            background: rgba(196, 182, 157, 0.1);
+            cursor: pointer;
+        }
+
+        /* 右侧列：详情、筛选、图例 */
+        .right-col {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .side-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .details-panel {
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .stamp {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            color: #b23b3b;
+            border: 2px solid #b23b3b;
+            padding: 5px 10px;
+            font-size: 14px;
+            font-weight: bold;
+            transform: rotate(-10deg);
+            opacity: 0.8;
+            letter-spacing: 2px;
+        }
+
+        .panel-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(196, 182, 157, 0.5);
+            padding-bottom: 5px;
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            background: #5c4e40;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .tag:hover {
+            background: var(--primary);
+        }
+
+        .legend-list {
+            list-style: none;
+            font-size: 14px;
+        }
+
+        .legend-list li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot.allied { background: #3b82f6; }
+        .dot.axis { background: #ef4444; }
+        .dot.neutral { background: #f59e0b; }
+
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <div class="nav-title">
+            <h1>二战：互动历史地图集</h1>
+            <div class="subtitle">1939 <span style="margin: 0 10px;">—</span> 1945</div>
+        </div>
+        <div class="search-box">
+            <span style="color:var(--text-muted);">⚲</span>
+            <input type="text" placeholder="检索战役、军事行动、人物...">
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="left-col">
+            <!-- 地图区域 -->
+            <div class="map-container">
+                <div class="map-placeholder">[ 动态战场地图载入中... ]</div>
+                <div class="map-overlay">
+                    <div>World War II</div>
+                    <div style="font-weight:normal; font-size:12px; color:#6e6150; margin-top:2px;">1939 - 1945</div>
+                </div>
+            </div>
+
+            <!-- 时间轴区域 -->
+            <div class="timeline-panel">
+                <div class="timeline-header">
+                    <span>时间轴</span>
+                    <div class="view-toggles">
+                        <button class="active">日视图</button>
+                        <button>周视图</button>
+                        <button>月视图</button>
+                        <span style="font-size:14px; margin-left:10px; padding:3px 8px; background:rgba(196,182,157,0.4);">1939年9月1日</span>
+                    </div>
+                </div>
+                
+                <div class="timeline-track-container">
+                    <div class="year-marks">
+                        <span>1939</span>
+                        <span>1940</span>
+                        <span>1941</span>
+                        <span>1942</span>
+                        <span>1943</span>
+                        <span>1944</span>
+                        <span>1945</span>
+                    </div>
+                </div>
+
+                <div class="timeline-controls">
+                    <button>|&lt;</button>
+                    <button>&lt; 1天</button>
+                    <button class="play-btn">▶</button>
+                    <button>1天 &gt;</button>
+                    <button>&gt;|</button>
+                </div>
+            </div>
+
+            <!-- 事件日志区域 -->
+            <div class="log-panel">
+                <div class="log-header">战役记录 (Event Log)</div>
+                <div class="log-item">
+                    <span>德国入侵波兰 (Invasion of Poland)</span>
+                    <span style="color:var(--text-muted)">1939年9月1日</span>
+                </div>
+                <div class="log-item">
+                    <span>西盘半岛战役 (Battle of Westerplatte)</span>
+                    <span style="color:var(--text-muted)">1939年9月1日</span>
+                </div>
+                <div class="log-item">
+                    <span>海尔半岛战役 (Battle of Hel Peninsula)</span>
+                    <span style="color:var(--text-muted)">1939年9月1日</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <!-- 详情侧边栏 -->
+            <div class="side-panel details-panel">
+                <div class="stamp">绝密档案 (CLASSIFIED)</div>
+                <h3 style="margin-bottom:10px; color:var(--text-main);">选择历史事件</h3>
+                <p>在地图上点击标记或在时间轴中选择<br>以查阅详细战役报告与数据。</p>
+            </div>
+
+            <!-- 筛选侧边栏 -->
+            <div class="side-panel filter-panel">
+                <div class="panel-title">事件类型筛选</div>
+                <div class="tags-container">
+                    <span class="tag">陆地战役</span>
+                    <span class="tag">军事入侵</span>
+                    <span class="tag">海战</span>
+                    <span class="tag">空战行动</span>
+                    <span class="tag">政治事件</span>
+                    <span class="tag">重要同盟会议</span>
+                    <span class="tag">投降书签署</span>
+                    <span class="tag">解放运动</span>
+                </div>
+            </div>
+
+            <!-- 图例侧边栏 -->
+            <div class="side-panel legend-panel">
+                <div class="panel-title">战局图例</div>
+                <ul class="legend-list">
+                    <li><span class="dot allied"></span> 同盟国胜利 (Allied Victory)</li>
+                    <li><span class="dot axis"></span> 轴心国胜利 (Axis Victory)</li>
+                    <li><span class="dot neutral"></span> 战果未决 / 对峙 (Inconclusive)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右下角悬浮退出按钮 -->
+    <a href="login-prototype.html" style="position:fixed; bottom:20px; right:20px; background:var(--primary); color:#fff; padding:10px 20px; text-decoration:none; border-radius:4px; font-weight:bold; box-shadow: 2px 2px 0px rgba(92, 42, 35, 0.8);">退出查阅</a>
+
+</body>
+</html>

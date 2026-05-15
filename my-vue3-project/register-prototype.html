@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>二战历史地图集 - 登录</title>
+    <title>二战历史地图集 - 注册</title>
     <style>
         :root {
             --primary: #7a3b31;
@@ -37,7 +37,7 @@
             width: 100%;
             max-width: 420px;
             height: 100%;
-            max-height: 560px;
+            max-height: 600px;
             background: var(--card-bg);
             border: 1px solid #c4b69d;
             border-radius: 4px;
@@ -57,7 +57,6 @@
             position: relative;
         }
 
-        /* 顶部装饰线 */
         .screen::before {
             content: '';
             position: absolute;
@@ -71,8 +70,8 @@
         }
 
         .header {
-            margin-top: 50px;
-            margin-bottom: 40px;
+            margin-top: 40px;
+            margin-bottom: 30px;
             text-align: center;
         }
 
@@ -95,7 +94,7 @@
 
         .input-group {
             position: relative;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .input-group label {
@@ -135,33 +134,32 @@
             font-weight: bold;
         }
 
-        .actions {
+        .agreement {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 32px;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 24px;
             font-size: 13px;
         }
 
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .agreement input {
+            margin-top: 3px;
+            accent-color: var(--primary);
             cursor: pointer;
-            color: var(--text-main);
         }
 
-        .forgot-link {
+        .agreement span {
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .agreement a {
             color: var(--primary);
             text-decoration: none;
             font-weight: bold;
         }
 
-        .forgot-link:hover {
-            text-decoration: underline;
-        }
-
-        .btn-login {
+        .btn-register {
             width: 100%;
             padding: 16px;
             background: var(--primary);
@@ -176,15 +174,16 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             box-shadow: 2px 2px 0px rgba(92, 42, 35, 0.8);
+            margin-bottom: 20px;
         }
 
-        .btn-login:hover {
+        .btn-register:hover {
             background: var(--primary-hover);
             transform: translate(1px, 1px);
             box-shadow: 1px 1px 0px rgba(92, 42, 35, 0.8);
         }
 
-        .btn-login:active {
+        .btn-register:active {
             transform: translate(2px, 2px);
             box-shadow: 0px 0px 0px rgba(92, 42, 35, 0.8);
         }
@@ -194,10 +193,9 @@
             text-align: center;
             font-size: 14px;
             color: var(--text-muted);
-            padding-bottom: 0px;
+            padding-bottom: 10px;
             border-top: 1px dashed var(--input-border);
             padding-top: 20px;
-            margin-bottom: 0;
         }
 
         .footer a {
@@ -211,46 +209,53 @@
     <div class="login-container">
         <div class="screen">
             <div class="header">
-                <h1>二战历史地图集</h1>
-                <p>回望惨痛战役，铭记胜利来之不易</p>
+                <h1>建立新档案</h1>
+                <p>记录您的历史足迹</p>
             </div>
 
             <div class="form-container">
                 <div class="input-group">
-                    <input type="text" id="username" placeholder=" " autocomplete="off">
-                    <label for="username">档案号 (账号)</label>
+                    <input type="text" id="reg-username" placeholder=" " autocomplete="off">
+                    <label for="reg-username">档案号 (账号)</label>
                 </div>
                 
                 <div class="input-group">
-                    <input type="password" id="password" placeholder=" ">
-                    <label for="password">密令 (密码)</label>
+                    <input type="password" id="reg-password" placeholder=" ">
+                    <label for="reg-password">密令 (密码)</label>
                 </div>
 
-                <div class="actions">
-                    <label class="checkbox-container">
-                        <input type="checkbox"> 
-                        <span class="checkmark"></span>
-                        保存档案记录
-                    </label>
+                <div class="input-group">
+                    <input type="password" id="reg-password-cfm" placeholder=" ">
+                    <label for="reg-password-cfm">确认密令</label>
                 </div>
 
-                <button class="btn-login" id="loginBtn" onclick="handleLogin()">
-                    <span class="btn-text">调取档案</span>
+                <div class="agreement">
+                    <input type="checkbox" id="agree">
+                    <span>本人已阅读并同意参与 <a href="#">《历史研究协议》</a> 与 <a href="#">《保密条例》</a></span>
+                </div>
+
+                <button class="btn-register" id="regBtn" onclick="handleRegister()">
+                    <span class="btn-text">注册并封存卷宗</span>
                 </button>
             </div>
 
             <div class="footer">
-                尚未登记记录？ <a href="register-prototype.html">建立新档案</a>
+                已有档案？ <a href="login-prototype.html">前往调取</a>
             </div>
         </div>
     </div>
 
     <script>
-        function handleLogin() {
-            const btn = document.getElementById('loginBtn');
-            btn.innerHTML = '<span style="opacity:0.8">调取中...</span>';
+        function handleRegister() {
+            const agree = document.getElementById('agree').checked;
+            if(!agree) {
+                alert('请先同意研究协议与保密条例！');
+                return;
+            }
+            const btn = document.getElementById('regBtn');
+            btn.innerHTML = '<span style="opacity:0.8">建立中...</span>';
             setTimeout(() => {
-                window.location.href = 'home-prototype.html';
+                window.location.href = 'login-prototype.html';
             }, 1000);
         }
     </script>
