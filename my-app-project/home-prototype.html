@@ -22,7 +22,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: "Georgia", "Times New Roman", serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Georgia", "Times New Roman", serif;
             -webkit-font-smoothing: antialiased;
         }
 
@@ -35,6 +35,7 @@
             padding: 20px;
             color: var(--text-main);
             min-height: 100vh;
+            overflow-y: scroll; /* 始终显示垂直滚动条，避免出现抖动 */
         }
 
         /* 顶部导航 */
@@ -342,11 +343,8 @@
         .dot.neutral { background: #f59e0b; }
 
         /* 给地图图层加上老旧照片的滤镜效果 */
-        .leaflet-layer,
-        .leaflet-control-zoom-in,
-        .leaflet-control-zoom-out,
-        .leaflet-control-attribution {
-            filter: sepia(0.5) contrast(0.9) brightness(0.9);
+        .map-tiles {
+            filter: sepia(0.6) contrast(0.8) brightness(0.9);
         }
         
         .leaflet-popup-content-wrapper {
@@ -475,10 +473,14 @@
         });
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // 使用免费的 OpenStreetMap 作为底图
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
+        // 使用高德地图作为底图源，解决 OpenStreetMap 在国内可能加载不出图片的问题
+        L.tileLayer('https://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7', {
+            attribution: '&copy; AutoNavi',
+            className: 'map-tiles'
         }).addTo(map);
+        
+        // 修复部分情况下地图容器大小未就绪导致加载不全的问题
+        setTimeout(() => map.invalidateSize(), 500);
 
         // 2. 准备历史事件数据 (JSON格式，纯前端实现，无需后端)
         const historicalEvents = [
@@ -577,32 +579,32 @@
             const visibleEvents = historicalEvents.filter(e => e.year <= selectedYearValue);
 
             visibleEvents.forEach(event => {
-                // 绘制地图Marker点
-                const marker = L.circleMarker([event.lat, event.lng], {
-                    radius: 8,
-                    fillColor: getColor(event.type),
-                    color: "#fff",
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
+                // 针对跨大洋显示问题：为每个事件同时创建 -360/0/+360 经度偏移的副本，
+                // 保证在地图左右边缘附近也能看到同一事件的显现（例如珍珠港在太平洋侧）。
+                const lonOffsets = [-360, 0, 360];
+                lonOffsets.forEach(offset => {
+                    const displayLng = event.lng + offset;
+                    const marker = L.circleMarker([event.lat, displayLng], {
+                        radius: 8,
+                        fillColor: getColor(event.type),
+                        color: "#fff",
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
 
-                marker.bindPopup(`<b>${event.title}</b><br>${event.dateStr}`);
-                
-                // 绑定点击事件：更新右侧面板
-                marker.on('click', () => {
-                    showDetails(event);
+                    marker.bindPopup(`<b>${event.title}</b><br>${event.dateStr}`);
+                    marker.on('click', () => showDetails(event));
+                    currentMarkers.push(marker);
                 });
 
-                currentMarkers.push(marker);
-
-                // 生成事件日志列表条目
+                // 生成事件日志列表条目（点击仍然以原始经纬度为目标）
                 const logItem = document.createElement('div');
                 logItem.className = 'log-item';
                 logItem.innerHTML = `<span>${event.title}</span> <span style="color:var(--text-muted)">${event.dateStr.split(' ')[0]}</span>`;
                 logItem.onclick = () => {
+                    // normalize longitude into visible range near map center
                     map.flyTo([event.lat, event.lng], 6);
-                    marker.openPopup();
                     showDetails(event);
                 };
                 logBox.appendChild(logItem);
