@@ -295,6 +295,47 @@
             letter-spacing: 2px;
         }
 
+        .close-btn {
+            display: none;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.05);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            font-size: 18px;
+            line-height: 32px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+        .close-btn:hover { background: rgba(0,0,0,0.08); }
+
+        /* 图例下方按钮 */
+        .legend-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+        }
+        .legend-actions button {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.08);
+        }
+        .legend-actions button.secondary {
+            background: #f0f0f0;
+            color: var(--text-main);
+            box-shadow: none;
+            border: 1px solid var(--border-color);
+        }
+
         .panel-title {
             font-weight: bold;
             font-size: 16px;
@@ -423,9 +464,10 @@
 
         <div class="right-col">
             <!-- 详情侧边栏 -->
-            <div class="side-panel details-panel" id="details-panel" style="align-items: flex-start; justify-content: flex-start; text-align: left;">
-                <div class="stamp">绝密档案 (CLASSIFIED)</div>
-                <h3 style="margin-bottom:10px; color:var(--text-main);" id="detail-title">选择历史事件</h3>
+            <div class="side-panel details-panel" id="details-panel" style="align-items: flex-start; justify-content: flex-start; text-align: left; position: relative;">
+                    <div class="stamp">绝密档案 (CLASSIFIED)</div>
+                    <button id="close-detail-btn" class="close-btn" title="关闭事件详情">×</button>
+                    <h3 style="margin-bottom:10px; color:var(--text-main);" id="detail-title">选择历史事件</h3>
                 <p id="detail-desc" style="font-size: 14px; line-height: 1.6; margin-bottom: 10px;">在地图上点击标记或在时间轴中选择<br>以查阅详细战役报告与数据。</p>
                 <div id="detail-stats" style="font-size: 13px; display: none; background: rgba(196,182,157,0.2); padding: 10px; border-radius: 4px; width: 100%;">
                     <div><strong>时间：</strong> <span id="stat-date"></span></div>
@@ -458,6 +500,12 @@
                     <li><span class="dot neutral"></span> 战果未决 / 对峙 (Inconclusive)</li>
                 </ul>
             </div>
+
+            <div class="legend-actions" style="margin-top:8px; margin-left:8px;">
+                <button id="btn-quiz">测验</button>
+                <button id="btn-mine">我的</button>
+            </div>
+
         </div>
     </div>
 
@@ -467,16 +515,28 @@
     <script>
         // 1. 初始化地图结构 (Leaflet.js)
         const map = L.map('map', {
-            center: [48, 15], // 欧洲中心
-            zoom: 4,
+            center: [30, 100], // 起始视角靠近亚洲和太平洋，方便看见珍珠港方向
+            zoom: 3,
+            minZoom: 3,
+            maxZoom: 7,
+            // 不设置 maxBounds，让左右无限平滑循环
+            // 限制纬度到 Web Mercator 可用范围，给经度足够大的范围以实现视觉上无限左右滚动
+            maxBounds: [[-85, -360000], [85, 360000]],
+            maxBoundsViscosity: 0.1,
+            worldCopyJump: false,
+            noWrap: false,
             zoomControl: false // 隐藏默认缩放按钮
         });
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         // 使用高德地图作为底图源，解决 OpenStreetMap 在国内可能加载不出图片的问题
-        L.tileLayer('https://wprd01.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7', {
+        L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
             attribution: '&copy; AutoNavi',
-            className: 'map-tiles'
+            subdomains: '1234',
+            className: 'map-tiles',
+            tileSize: 256,
+            continuousWorld: true,
+            noWrap: false
         }).addTo(map);
         
         // 修复部分情况下地图容器大小未就绪导致加载不全的问题
@@ -553,6 +613,35 @@
         ];
 
         let currentMarkers = [];
+        let currentSelectedYear = 1939.0;
+
+        function normalizeLongitude(lng, referenceLng) {
+            let result = lng;
+            while (result - referenceLng > 180) result -= 360;
+            while (result - referenceLng < -180) result += 360;
+            return result;
+        }
+
+        function getVisibleLongitudeCopies(lng) {
+            const bounds = map.getBounds();
+            const west = bounds.getWest();
+            const east = bounds.getEast();
+            const copies = [];
+            const baseLng = normalizeLongitude(lng, map.getCenter().lng);
+
+            for (let offset = -720; offset <= 720; offset += 360) {
+                const candidate = baseLng + offset;
+                if (candidate >= west - 5 && candidate <= east + 5) {
+                    copies.push(candidate);
+                }
+            }
+
+            if (copies.length === 0) {
+                copies.push(baseLng);
+            }
+
+            return copies;
+        }
 
         // 根据 type 获取节点颜色
         function getColor(type) {
@@ -563,6 +652,8 @@
 
         // 3. 动态渲染地图点位与日志清单
         function updateTimeline(selectedYearValue) {
+            currentSelectedYear = selectedYearValue;
+
             // 清除旧的标记
             currentMarkers.forEach(m => map.removeLayer(m));
             currentMarkers = [];
@@ -579,11 +670,9 @@
             const visibleEvents = historicalEvents.filter(e => e.year <= selectedYearValue);
 
             visibleEvents.forEach(event => {
-                // 针对跨大洋显示问题：为每个事件同时创建 -360/0/+360 经度偏移的副本，
-                // 保证在地图左右边缘附近也能看到同一事件的显现（例如珍珠港在太平洋侧）。
-                const lonOffsets = [-360, 0, 360];
-                lonOffsets.forEach(offset => {
-                    const displayLng = event.lng + offset;
+                // 根据当前视野动态生成经度副本，避免切到下一圈后事件点消失
+                const visibleLongitudes = getVisibleLongitudeCopies(event.lng);
+                visibleLongitudes.forEach(displayLng => {
                     const marker = L.circleMarker([event.lat, displayLng], {
                         radius: 8,
                         fillColor: getColor(event.type),
@@ -604,12 +693,19 @@
                 logItem.innerHTML = `<span>${event.title}</span> <span style="color:var(--text-muted)">${event.dateStr.split(' ')[0]}</span>`;
                 logItem.onclick = () => {
                     // normalize longitude into visible range near map center
-                    map.flyTo([event.lat, event.lng], 6);
+                    map.flyTo([event.lat, normalizeLongitude(event.lng, map.getCenter().lng)], 6);
                     showDetails(event);
                 };
                 logBox.appendChild(logItem);
             });
         }
+
+        // 地图拖动或缩放时，重新计算当前视野内应出现的世界副本
+        map.on('moveend zoomend', () => {
+            if (currentSelectedYear >= 1939) {
+                updateTimeline(currentSelectedYear);
+            }
+        });
 
         // 更新右侧绝密档案详情
         function showDetails(event) {
@@ -623,7 +719,27 @@
             outcomeEl.style.color = getColor(event.type);
             
             document.getElementById('detail-stats').style.display = 'block';
+            // 显示关闭按钮（仅在有事件详情时可见）
+            const closeBtn = document.getElementById('close-detail-btn');
+            if (closeBtn) closeBtn.style.display = 'block';
         }
+
+        function closeDetails() {
+            document.getElementById('detail-title').innerText = '选择历史事件';
+            document.getElementById('detail-desc').innerHTML = '在地图上点击标记或在时间轴中选择<br>以查阅详细战役报告与数据。';
+            document.getElementById('detail-stats').style.display = 'none';
+            // 隐藏关闭按钮
+            const closeBtn = document.getElementById('close-detail-btn');
+            if (closeBtn) closeBtn.style.display = 'none';
+        }
+
+        document.getElementById('close-detail-btn').addEventListener('click', closeDetails);
+
+        // 图例下方按钮占位行为
+        const quizBtn = document.getElementById('btn-quiz');
+        const mineBtn = document.getElementById('btn-mine');
+        if (quizBtn) quizBtn.addEventListener('click', () => { window.location.href = 'quiz.html'; });
+        if (mineBtn) mineBtn.addEventListener('click', () => { window.location.href = 'my.html'; });
 
         // 监听滑块变化
         const slider = document.getElementById('timeline-slider');
