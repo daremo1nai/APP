@@ -1,0 +1,19 @@
+// quizQuestions.schema.json - 测验题目表
+{
+  "bsonType": "object",
+  "required": ["question", "options", "answer", "difficulty"],
+  "permission": {
+    "read": true,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "question": { "bsonType": "string" },
+    "options": { "bsonType": "array", "items": { "bsonType": "string" } },
+    "answer": { "bsonType": "int", "description": "正确答案索引(0-based)" },
+    "difficulty": { "bsonType": "string", "enum": ["easy", "medium", "hard"] },
+    "category": { "bsonType": "string" },
+    "explanation": { "bsonType": "string" }
+  }
+}

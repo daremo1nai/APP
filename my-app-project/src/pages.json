@@ -1,16 +1,73 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
-			"path": "pages/index/index",
-			"style": {
-				"navigationBarTitleText": "uni-app"
-			}
+			"path": "pages/home/home",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/classroom/classroom",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/explore/explore",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/my/my",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/auth/auth",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/explore/quiz",
+			"style": { "navigationBarTitleText": "情报测验" }
+		},
+		{
+			"path": "pages/explore/forum",
+			"style": { "navigationBarTitleText": "战史研讨" }
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarTitleText": "二战历史地图集",
+		"navigationBarBackgroundColor": "#f4ebd8",
+		"backgroundColor": "#f4ebd8"
+	},
+	"tabBar": {
+		"color": "#6e6150",
+		"selectedColor": "#7a3b31",
+		"backgroundColor": "#faf7ef",
+		"borderStyle": "white",
+		"list": [
+			{
+				"pagePath": "pages/home/home",
+				"text": "态势图",
+				"iconPath": "static/tab-map.png",
+				"selectedIconPath": "static/tab-map-active.png"
+			},
+			{
+				"pagePath": "pages/classroom/classroom",
+				"text": "课堂",
+				"iconPath": "static/tab-book.png",
+				"selectedIconPath": "static/tab-book-active.png"
+			},
+			{
+				"pagePath": "pages/explore/explore",
+				"text": "探索",
+				"iconPath": "static/tab-compass.png",
+				"selectedIconPath": "static/tab-compass-active.png"
+			},
+			{
+				"pagePath": "pages/my/my",
+				"text": "档案室",
+				"iconPath": "static/tab-user.png",
+				"selectedIconPath": "static/tab-user-active.png"
+			}
+		]
+	},
+	"easycom": {
+		"autoscan": true
 	}
 }

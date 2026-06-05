@@ -1,0 +1,38 @@
+// uni-id 配置文件
+// 控制登录注册的行为：支持哪些方式登录、密码规则、token 有效期等
+{
+  "passwordSecret": "wwii-atlas-secret-key",  // 密码加密密钥（生产环境请换成随机字符串）
+  "tokenSecret": "wwii-atlas-token-secret",   // token 签名密钥
+  "tokenExpiresIn": 2592000,                   // token 有效期 30 天（秒）
+  "tokenExpiresThreshold": 86400,              // token 过期前 1 天自动续期
+  "passwordErrorLimit": 5,                     // 密码错误最多 5 次
+  "passwordErrorRetryTime": 3600,              // 密码错误锁定 1 小时
+  "bindTokenToDevice": false,                  // 不绑定设备（方便多端登录）
+  "autoSetInviteCode": false,
+
+  // 登录方式：支持用户名+密码登录
+  "usernamePasswordLogin": true,
+  "mobileCodeLogin": false,   // 短信验证码登录（需配置短信服务）
+  "emailLogin": false,        // 邮箱登录
+  "appleLogin": false,
+  "weixinLogin": false,
+
+  // 注册配置
+  "registerByUsername": true,  // 允许用户名注册
+  "registerByMobile": false,   // 手机号注册（需短信服务）
+
+  // 用户名规则
+  "usernameMinLength": 2,
+  "usernameMaxLength": 20,
+
+  // 密码规则
+  "passwordMinLength": 6,
+  "passwordMaxLength": 20,
+  "passwordStrength": "medium",  // low | medium | high
+
+  // 用户默认角色
+  "registerRole": ["user"],
+
+  // 多应用共享用户（同一个服务空间多个应用共用一个用户系统）
+  "isUniApp": true
+}

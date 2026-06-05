@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>二战历史地图集 — 高保真原型 v2</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ============================================
+   二战历史地图集 — 设计系统 v2
+   风格：羊皮纸档案 · 军事档案室 · 高级复古
+   新增：课堂页 · 探索大厅
+   ============================================ */
+:root {
+  --ink-black:    #1a1410;
+  --ink-dark:     #2c221a;
+  --ink-body:     #3e362c;
+  --ink-muted:    #6e6150;
+  --ink-soft:     #9b8d7a;
+  --parchment:    #e8dcc8;
+  --parchment-deep: #d4c4a8;
+  --parchment-light: #f4ebd8;
+  --parchment-white: #faf7ef;
+  --archive-red:  #7a3b31;
+  --archive-red-dark: #5c2a23;
+  --archive-red-glow: #9b4a3e;
+  --brass:         #b8935a;
+  --brass-light:   #d4b87a;
+  --brass-dark:    #8b6d3f;
+  --navy:          #2c4a6e;
+  --navy-light:    #3a6088;
+  --axis-red:      #8b2a2a;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-card: 0 2px 16px rgba(26,20,16,0.10), 0 0 0 1px rgba(196,182,157,0.4);
+  --shadow-lg:   0 8px 32px rgba(26,20,16,0.18), 0 0 0 1px rgba(196,182,157,0.3);
+  --shadow-btn:  2px 2px 0px rgba(92,42,35,0.6);
+  --font-display: 'Georgia', 'Times New Roman', 'STSong', 'Songti SC', 'Noto Serif SC', serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #3a3028;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(184,147,90,0.08) 0%, transparent 60%),
+    url('data:image/svg+xml;utf8,<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.04"/></svg>');
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================
+   手机外壳
+   ============================================ */
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  background: var(--parchment);
+  border-radius: 36px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 3px #1a1410,
+    0 0 0 6px #3a2a1a,
+    0 0 0 8px #1a1410,
+    0 20px 60px rgba(0,0,0,0.5);
+}
+.phone-notch {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 28px;
+  background: #1a1410;
+  border-radius: 0 0 16px 16px;
+  z-index: 1000;
+}
+.screen {
+  width: 100%; height: 100%;
+  overflow-y: auto; overflow-x: hidden;
+  position: relative;
+  background: var(--parchment-light);
+  padding-bottom: 72px;
+  scroll-behavior: smooth;
+}
+.screen::-webkit-scrollbar { width: 0; }
+
+/* ============================================
+   页面容器 & 子页面容器
+   ============================================ */
+.page { display: none; min-height: 100%; padding: 16px; animation: pageIn 0.3s ease; position: relative; z-index: 1; }
+.page.active { display: block; }
+.sub-page { display: none; min-height: 100%; padding: 16px; animation: pageIn 0.3s ease; position: relative; z-index: 1; }
+.sub-page.active { display: block; }
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   状态栏 & 页面标题
+   ============================================ */
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 4px 12px; font-size: 11px; color: var(--ink-muted);
+  font-family: var(--font-display); letter-spacing: 1px;
+}
+.status-bar .military-time { font-weight: bold; color: var(--ink-body); }
+.page-header { margin-bottom: 16px; position: relative; }
+.page-header .overline {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 3px;
+  color: var(--archive-red); font-family: var(--font-display); margin-bottom: 4px;
+}
+.page-header h2 {
+  font-family: var(--font-display); font-size: 24px; color: var(--ink-dark);
+  font-weight: 700; letter-spacing: 0.5px; line-height: 1.2;
+}
+.page-header .subtitle { font-size: 12px; color: var(--ink-muted); margin-top: 4px; font-style: italic; }
+.page-header::after {
+  content: ''; display: block; width: 40px; height: 2px;
+  background: var(--archive-red); margin-top: 10px; opacity: 0.6;
+}
+
+/* ============================================
+   卡片 & 按钮
+   ============================================ */
+.card {
+  background: var(--parchment-white); border: 1px solid rgba(196,182,157,0.5);
+  border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px;
+  box-shadow: var(--shadow-card); position: relative;
+}
+.card-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.card-title {
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  color: var(--ink-dark); letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;
+}
+.card-title .icon { font-size: 18px; }
+.card-badge {
+  font-size: 10px; padding: 3px 10px; border-radius: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; font-family: var(--font-display);
+}
+.badge-classified { background: var(--archive-red); color: #f4ebd8; }
+.badge-intel { background: var(--ink-dark); color: var(--brass-light); border: 1px solid var(--brass); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 24px; border-radius: var(--radius-sm); font-size: 14px;
+  font-weight: 700; cursor: pointer; border: none; transition: all 0.2s;
+  font-family: var(--font-display); letter-spacing: 1px; text-transform: uppercase;
+}
+.btn-primary {
+  background: var(--archive-red); color: var(--parchment-light);
+  border: 2px solid var(--archive-red-dark); box-shadow: var(--shadow-btn); width: 100%;
+}
+.btn-primary:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0px rgba(92,42,35,0.6); }
+.btn-outline {
+  background: transparent; border: 1.5px solid var(--archive-red);
+  color: var(--archive-red); width: 100%;
+}
+.btn-outline:active { background: rgba(122,59,49,0.06); }
+
+/* 返回按钮 */
+.btn-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: none; border: 1px solid var(--parchment-deep); color: var(--ink-muted);
+  padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer;
+  font-family: var(--font-display); letter-spacing: 0.5px; margin-bottom: 12px; transition: all 0.2s;
+}
+.btn-back:active { background: rgba(196,182,157,0.15); color: var(--archive-red); }
+
+/* ============================================
+   输入框
+   ============================================ */
+.input-group { margin-bottom: 14px; position: relative; }
+.input-group label {
+  display: block; font-size: 11px; color: var(--ink-muted); margin-bottom: 5px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-family: var(--font-display); font-weight: 700;
+}
+.input-group input {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--parchment-deep);
+  border-radius: var(--radius-sm); font-size: 14px; background: var(--parchment-white);
+  color: var(--ink-dark); font-family: var(--font-body); transition: all 0.2s; outline: none;
+}
+.input-group input:focus {
+  border-color: var(--archive-red); box-shadow: 0 0 0 3px rgba(122,59,49,0.08); background: #fffdf7;
+}
+
+/* ============================================
+   底部导航栏
+   ============================================ */
+.tab-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 72px;
+  background: linear-gradient(180deg, #faf7ef 0%, #f0e8d5 100%);
+  display: flex; align-items: flex-start; justify-content: space-around;
+  border-top: 1px solid var(--parchment-deep); z-index: 999; padding-top: 10px;
+  box-shadow: 0 -2px 12px rgba(26,20,16,0.06);
+}
+.tab-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: pointer; padding: 4px 12px; transition: all 0.2s;
+  border: none; background: none; font-family: var(--font-body); position: relative;
+}
+.tab-item .tab-icon  { font-size: 20px; transition: all 0.2s; }
+.tab-item .tab-label { font-size: 10px; color: var(--ink-muted); font-weight: 500; letter-spacing: 0.5px; transition: all 0.2s; }
+.tab-item.active .tab-label { color: var(--archive-red); font-weight: 700; }
+.tab-item.active .tab-icon  { transform: translateY(-1px); }
+.tab-item.active::before {
+  content: ''; position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 2px; background: var(--archive-red); border-radius: 1px;
+}
+
+/* ============================================
+   首页 — 地图 & 时间轴
+   ============================================ */
+.map-card {
+  background: var(--parchment-white); border: 1px solid rgba(196,182,157,0.5);
+  border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-card); margin-bottom: 12px;
+}
+.map-card .map-inner { width: 100%; height: 220px; position: relative; }
+.map-card .map-overlay-tag {
+  position: absolute; top: 10px; left: 10px; z-index: 1000;
+  background: rgba(26,20,16,0.75); color: var(--brass-light);
+  padding: 4px 10px; border-radius: 3px; font-size: 10px;
+  font-family: var(--font-display); letter-spacing: 1px; pointer-events: none;
+  border: 1px solid rgba(184,147,90,0.4);
+}
+.map-card .map-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: var(--parchment-light);
+  border-top: 1px solid rgba(196,182,157,0.3);
+}
+.map-bar .year-badge { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--archive-red); letter-spacing: 1px; }
+.map-bar .map-hint { font-size: 10px; color: var(--ink-muted); font-style: italic; }
+
+.event-snippet {
+  display: flex; align-items: center; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid rgba(196,182,157,0.25); cursor: pointer; transition: all 0.15s;
+}
+.event-snippet:last-child { border-bottom: none; }
+.event-snippet:hover { background: rgba(196,182,157,0.08); margin: 0 -8px; padding: 10px 8px; border-radius: 4px; }
+.event-snippet .event-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.event-dot.allied  { background: var(--navy); }
+.event-dot.axis    { background: var(--axis-red); }
+.event-dot.neutral { background: #b8935a; }
+.event-snippet .event-info { flex: 1; min-width: 0; }
+.event-snippet .event-name { font-size: 13px; font-weight: 600; color: var(--ink-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event-snippet .event-date { font-size: 10px; color: var(--ink-muted); font-family: var(--font-display); }
+
+/* ============================================
+   课堂页 — 文章 & 视频
+   ============================================ */
+.classroom-tabs {
+  display: flex; gap: 0; margin-bottom: 16px;
+  border: 1px solid var(--parchment-deep); border-radius: var(--radius-sm); overflow: hidden;
+}
+.classroom-tab {
+  flex: 1; padding: 9px; text-align: center; font-size: 12px; font-weight: 700;
+  cursor: pointer; border: none; background: var(--parchment-light); color: var(--ink-muted);
+  font-family: var(--font-display); letter-spacing: 1px; transition: all 0.2s;
+}
+.classroom-tab.active { background: var(--archive-red); color: #f4ebd8; }
+
+/* 文章卡片 */
+.article-card {
+  background: var(--parchment-white); border: 1px solid rgba(196,182,157,0.5);
+  border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-card); margin-bottom: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.article-card:active { transform: scale(0.985); }
+.article-cover {
+  height: 120px; position: relative; display: flex; align-items: center; justify-content: center;
+  font-size: 42px; color: #fff;
+}
+.article-cover.ac1 { background: linear-gradient(135deg, #4a3828, #6b5240); }
+.article-cover.ac2 { background: linear-gradient(135deg, #3a4a3a, #5a6b4a); }
+.article-cover.ac3 { background: linear-gradient(135deg, #2c3a4a, #4a5a6b); }
+.article-cover .ac-overlay {
+  position: absolute; top: 8px; left: 10px;
+  background: rgba(0,0,0,0.5); color: var(--brass-light); padding: 3px 8px;
+  border-radius: 3px; font-size: 9px; font-family: var(--font-display); letter-spacing: 1px;
+}
+.article-body { padding: 12px 14px; }
+.article-body .art-title {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--ink-dark); margin-bottom: 4px; letter-spacing: 0.3px;
+}
+.article-body .art-excerpt {
+  font-size: 11px; color: var(--ink-muted); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.article-body .art-meta {
+  display: flex; justify-content: space-between; margin-top: 8px;
+  font-size: 10px; color: var(--ink-soft); font-family: var(--font-display);
+}
+
+/* 视频卡片 */
+.video-card {
+  background: var(--parchment-white); border: 1px solid rgba(196,182,157,0.5);
+  border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-card); margin-bottom: 12px; cursor: pointer;
+  display: flex; gap: 0; transition: all 0.15s;
+}
+.video-card:active { transform: scale(0.985); }
+.video-thumb {
+  width: 110px; min-height: 78px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+  position: relative;
+}
+.video-thumb.vt1 { background: linear-gradient(135deg, #3a3030, #5a4040); }
+.video-thumb.vt2 { background: linear-gradient(135deg, #2a3a3a, #3a5a5a); }
+.video-thumb.vt3 { background: linear-gradient(135deg, #3a3028, #5a4a38); }
+.video-thumb .play-btn {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--archive-red);
+}
+.video-info { padding: 10px 12px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.video-info .vid-title { font-size: 13px; font-weight: 700; color: var(--ink-dark); margin-bottom: 3px; font-family: var(--font-display); }
+.video-info .vid-duration { font-size: 10px; color: var(--ink-muted); }
+
+/* ============================================
+   探索页 — 功能大厅
+   ============================================ */
+/* 顶部 banner */
+.explore-banner {
+  background: linear-gradient(135deg, #2c221a 0%, #3e3024 40%, #4a3828 100%);
+  border-radius: var(--radius-lg); padding: 20px; margin-bottom: 18px;
+  color: #f4ebd8; position: relative; overflow: hidden;
+  border: 1px solid rgba(184,147,90,0.3); box-shadow: var(--shadow-lg);
+}
+.explore-banner::before {
+  content: ''; position: absolute; top: -40px; right: -20px;
+  width: 100px; height: 100px; border-radius: 50%;
+  background: rgba(184,147,90,0.1); pointer-events: none;
+}
+.explore-banner h3 { font-family: var(--font-display); font-size: 18px; font-weight: 700; position: relative; }
+.explore-banner p { font-size: 11px; color: var(--brass-light); margin-top: 4px; position: relative; opacity: 0.8; }
+
+/* 2列功能入口网格 */
+.feature-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+}
+.feature-entry {
+  background: var(--parchment-white); border: 1px solid rgba(196,182,157,0.5);
+  border-radius: var(--radius-md); padding: 20px 14px; text-align: center;
+  box-shadow: var(--shadow-card); cursor: pointer; transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+.feature-entry:active { transform: scale(0.95); box-shadow: 0 1px 6px rgba(26,20,16,0.08); }
+.feature-entry .fe-icon {
+  font-size: 36px; margin-bottom: 8px; display: block;
+  transition: transform 0.2s;
+}
+.feature-entry:active .fe-icon { transform: scale(1.1); }
+.feature-entry .fe-title {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--ink-dark); margin-bottom: 3px;
+}
+.feature-entry .fe-desc {
+  font-size: 10px; color: var(--ink-muted); line-height: 1.4;
+}
+.feature-entry .fe-badge {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 9px; padding: 2px 7px; border-radius: 8px;
+  background: var(--archive-red); color: #f4ebd8; font-weight: 700;
+  font-family: var(--font-display); letter-spacing: 0.5px;
+}
+
+/* 探索页下方内容卡片 */
+.explore-section-title {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--ink-dark); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+
+/* ============================================
+   做题页（探索子页）
+   ============================================ */
+.quiz-progress {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.quiz-progress .progress-bar { flex: 1; height: 3px; background: var(--parchment-deep); border-radius: 2px; overflow: hidden; }
+.quiz-progress .progress-fill { height: 100%; background: var(--archive-red); border-radius: 2px; transition: width 0.3s; }
+.quiz-progress span { font-size: 11px; color: var(--ink-muted); font-family: var(--font-display); }
+.quiz-card {
+  background: var(--parchment-white); border: 1px solid rgba(196,182,157,0.5);
+  border-radius: var(--radius-md); padding: 18px; margin-bottom: 12px; box-shadow: var(--shadow-card);
+}
+.quiz-card .q-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.q-difficulty {
+  font-size: 10px; padding: 3px 10px; border-radius: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; font-family: var(--font-display);
+}
+.q-difficulty.easy   { background: #e8ecf2; color: var(--navy); }
+.q-difficulty.medium { background: #f4ecd8; color: #8b6d3f; }
+.q-difficulty.hard   { background: #f0dede; color: var(--axis-red); }
+.q-category { font-size: 10px; color: var(--ink-muted); font-family: var(--font-display); letter-spacing: 1px; }
+.quiz-card .q-text { font-size: 14px; font-weight: 600; color: var(--ink-dark); line-height: 1.6; margin-bottom: 12px; }
+.quiz-card .q-options { display: flex; flex-direction: column; gap: 8px; }
+.q-option {
+  padding: 11px 14px; border: 1.5px solid var(--parchment-deep); border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 13px; color: var(--ink-body); transition: all 0.2s;
+  background: var(--parchment-white); font-family: var(--font-body);
+}
+.q-option:hover   { border-color: var(--brass); background: #fdfaf3; }
+.q-option.correct { border-color: #3a6b4a; background: #eaf2ec; color: #2a4a35; font-weight: 600; }
+.q-option.wrong   { border-color: var(--axis-red); background: #faf0f0; color: #7a2a2a; }
+
+/* ============================================
+   论坛页（探索子页）
+   ============================================ */
+.forum-post {
+  background: var(--parchment-white); border: 1px solid rgba(196,182,157,0.5);
+  border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px;
+  box-shadow: var(--shadow-card); cursor: pointer; transition: all 0.15s;
+}
+.forum-post:active { transform: scale(0.985); }
+.forum-post .post-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.forum-post .avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0; border: 2px solid var(--parchment-deep);
+}
+.avatar.av1 { background: #d4c4a8; } .avatar.av2 { background: #c4b89a; } .avatar.av3 { background: #b8a888; }
+.forum-post .author   { font-size: 13px; font-weight: 700; color: var(--ink-dark); }
+.forum-post .post-time { font-size: 10px; color: var(--ink-muted); font-family: var(--font-display); }
+.forum-post .post-title {
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  color: var(--ink-dark); margin-bottom: 4px; letter-spacing: 0.3px;
+}
+.forum-post .post-excerpt {
+  font-size: 12px; color: var(--ink-muted); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.forum-post .post-stats { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); font-family: var(--font-display); }
+.tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.tag-chip {
+  padding: 5px 12px; border-radius: 12px; font-size: 11px; cursor: pointer;
+  font-family: var(--font-display); letter-spacing: 0.5px; transition: all 0.2s; border: 1px solid transparent;
+}
+.tag-chip.active   { background: var(--archive-red); color: #f4ebd8; border-color: var(--archive-red-dark); }
+.tag-chip.inactive { background: transparent; color: var(--ink-muted); border-color: var(--parchment-deep); }
+
+/* ============================================
+   我的页面
+   ============================================ */
+.profile-banner { text-align: center; padding: 20px 0 16px; position: relative; }
+.profile-avatar-lg {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, #d4c4a8, #a08868);
+  margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; border: 3px solid var(--brass); box-shadow: 0 4px 16px rgba(26,20,16,0.15);
+}
+.profile-name { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--ink-dark); }
+.profile-title { font-size: 11px; color: var(--ink-muted); letter-spacing: 1px; font-family: var(--font-display); }
+.stat-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; text-align: center; }
+.stat-cell { padding: 12px 8px; }
+.stat-cell:not(:last-child) { border-right: 1px solid rgba(196,182,157,0.3); }
+.stat-cell .stat-num { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--archive-red); }
+.stat-cell .stat-desc { font-size: 10px; color: var(--ink-muted); margin-top: 2px; letter-spacing: 0.5px; }
+.menu-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-bottom: 1px solid rgba(196,182,157,0.25);
+  cursor: pointer; font-size: 14px; color: var(--ink-body); transition: all 0.15s;
+}
+.menu-row:active { color: var(--archive-red); }
+.menu-row .menu-left { display: flex; align-items: center; gap: 12px; }
+.menu-row .menu-icon { font-size: 18px; width: 22px; text-align: center; }
+.menu-row .menu-chevron { color: var(--ink-soft); font-size: 16px; }
+
+/* ============================================
+   登录/注册页
+   ============================================ */
+.auth-container { display: flex; flex-direction: column; justify-content: center; min-height: 100%; padding-top: 20px; }
+.auth-emblem { text-align: center; margin-bottom: 28px; }
+.auth-emblem .emblem-icon { font-size: 48px; margin-bottom: 8px; filter: drop-shadow(0 2px 4px rgba(26,20,16,0.2)); }
+.auth-emblem h1 { font-family: var(--font-display); font-size: 24px; color: var(--ink-dark); letter-spacing: 2px; font-weight: 700; }
+.auth-emblem .divider-military { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 8px; }
+.divider-military .dm-line { width: 24px; height: 1px; background: var(--archive-red); opacity: 0.5; }
+.divider-military .dm-star { font-size: 8px; color: var(--brass); }
+.auth-emblem p { font-size: 11px; color: var(--ink-muted); margin-top: 6px; letter-spacing: 1px; font-style: italic; }
+.auth-tabs { display: flex; gap: 0; margin-bottom: 22px; border: 1px solid var(--parchment-deep); border-radius: var(--radius-sm); overflow: hidden; }
+.auth-tab {
+  flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 700;
+  cursor: pointer; border: none; background: var(--parchment-light); color: var(--ink-muted);
+  font-family: var(--font-display); letter-spacing: 1px; transition: all 0.2s;
+}
+.auth-tab.active { background: var(--archive-red); color: #f4ebd8; }
+.auth-form .forgot { text-align: right; font-size: 11px; color: var(--ink-muted); margin-bottom: 18px; cursor: pointer; font-family: var(--font-display); }
+.auth-alt { text-align: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(196,182,157,0.4); }
+.auth-alt span { font-size: 10px; color: var(--ink-soft); letter-spacing: 1px; font-family: var(--font-display); }
+
+/* ============================================
+   Leaflet 地图
+   ============================================ */
+.leaflet-container { background-color: #d4cfc4 !important; }
+.leaflet-popup-content-wrapper {
+  background: var(--parchment-white) !important; color: var(--ink-dark) !important;
+  border-radius: 4px !important; border: 1px solid var(--parchment-deep) !important;
+  font-family: var(--font-display) !important; box-shadow: var(--shadow-lg) !important;
+}
+.leaflet-popup-tip { background: var(--parchment-white) !important; }
+.map-tiles { filter: sepia(0.5) contrast(0.85) brightness(0.92) saturate(0.7); }
+
+/* ============================================
+   杂项
+   ============================================ */
+.search-input {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--parchment-deep);
+  border-radius: 20px; font-size: 13px; background: var(--parchment-white);
+  color: var(--ink-dark); outline: none; font-family: var(--font-body); margin-bottom: 14px;
+}
+.search-input:focus { border-color: var(--archive-red); box-shadow: 0 0 0 3px rgba(122,59,49,0.06); }
+.engrave-stamp {
+  position: absolute; top: -8px; right: 12px;
+  color: var(--archive-red); border: 1.5px solid var(--archive-red);
+  padding: 4px 10px; font-size: 9px; font-weight: 700; transform: rotate(-8deg);
+  opacity: 0.75; letter-spacing: 2px; font-family: var(--font-display); pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="phone-notch"></div>
+  <div class="screen" id="screen">
+
+    <!-- ================================================================
+    PAGE 1: 首页 — 态势图（地图 + 时间轴）
+    ================================================================ -->
+    <div class="page active" id="page-home">
+      <div class="status-bar">
+        <span>◉◉◉◉◉</span>
+        <span class="military-time" id="statusTime"></span>
+        <span>⚡ ▮▮▮</span>
+      </div>
+      <div class="page-header">
+        <div class="overline">WORLD WAR II · INTERACTIVE ATLAS</div>
+        <h2>二战历史地图集</h2>
+        <div class="subtitle">1939 — 1945 · 回望硝烟，铭记历史</div>
+      </div>
+
+      <div class="map-card">
+        <div class="map-inner" id="mapContainer">
+          <div class="map-overlay-tag">🗺️ 战区态势图 · TOP SECRET</div>
+        </div>
+        <div class="map-bar">
+          <span class="year-badge" id="currentYearBadge">1939年</span>
+          <span class="map-hint">← 滑动时间轴探索 →</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">⏳</span>时间轴</span>
+          <span class="card-badge badge-intel" id="currentDateDisplay">1939年9月</span>
+        </div>
+        <input type="range" id="timelineSlider" min="1939" max="1945" value="1939" step="0.1"
+          style="width:100%; accent-color: var(--archive-red); margin: 8px 0;">
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--ink-muted); font-family:var(--font-display); padding:0 2px;">
+          <span>1939</span><span>1940</span><span>1941</span><span>1942</span><span>1943</span><span>1944</span><span>1945</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">📜</span>战役记录</span>
+          <span class="card-badge badge-classified">CLASSIFIED</span>
+        </div>
+        <div id="eventLogList"></div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+    PAGE 2: 课堂 — 文章 & 视频知识库
+    ================================================================ -->
+    <div class="page" id="page-classroom">
+      <div class="status-bar">
+        <span>◉◉◉◉◉</span>
+        <span class="military-time">军事学院 · 知识库</span>
+        <span>⚡ ▮▮▮</span>
+      </div>
+      <div class="page-header">
+        <div class="overline">WAR COLLEGE · LECTURE HALL</div>
+        <h2>战史课堂</h2>
+        <div class="subtitle">从入门到精通，系统学习二战史</div>
+      </div>
+
+      <!-- 文章/视频切换 -->
+      <div class="classroom-tabs">
+        <button class="classroom-tab active" onclick="switchClassroomTab('articles', this)">📖 精选文章</button>
+        <button class="classroom-tab" onclick="switchClassroomTab('videos', this)">🎬 视频课程</button>
+      </div>
+
+      <!-- 文章列表 -->
+      <div id="content-articles">
+        <div class="article-card" onclick="alert('📖 打开文章详情（原型演示）')">
+          <div class="article-cover ac1">
+            <span>⚔️</span>
+            <span class="ac-overlay">深度解析</span>
+          </div>
+          <div class="article-body">
+            <div class="art-title">闪电战：从波兰到法国的战术革命</div>
+            <div class="art-excerpt">德军如何在不到一年的时间里横扫欧洲大陆？本文深入剖析闪电战的三大核心要素：装甲突击、空中支援与无线电协同...</div>
+            <div class="art-meta"><span>📖 12,800 字</span><span>🕐 35 分钟阅读</span><span>👁️ 3.2k</span></div>
+          </div>
+        </div>
+
+        <div class="article-card" onclick="alert('📖 打开文章详情（原型演示）')">
+          <div class="article-cover ac2">
+            <span>🏛️</span>
+            <span class="ac-overlay">人物评传</span>
+          </div>
+          <div class="article-body">
+            <div class="art-title">艾森豪威尔：盟军最高统帅的领导艺术</div>
+            <div class="art-excerpt">一个从未指挥过战斗的上校，如何在短短三年内成为欧洲战场最高统帅？解密艾森豪威尔的领导力密码...</div>
+            <div class="art-meta"><span>📖 9,500 字</span><span>🕐 25 分钟阅读</span><span>👁️ 2.1k</span></div>
+          </div>
+        </div>
+
+        <div class="article-card" onclick="alert('📖 打开文章详情（原型演示）')">
+          <div class="article-cover ac3">
+            <span>🌊</span>
+            <span class="ac-overlay">战史复盘</span>
+          </div>
+          <div class="article-body">
+            <div class="art-title">太平洋战争转折点：中途岛海战全复盘</div>
+            <div class="art-excerpt">五分钟的差距决定国运——日军机动部队为何在短短数小时内全军覆没？从情报、决策到战术执行的全面复盘...</div>
+            <div class="art-meta"><span>📖 15,200 字</span><span>🕐 42 分钟阅读</span><span>👁️ 5.6k</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 视频列表 -->
+      <div id="content-videos" style="display:none;">
+        <div class="video-card" onclick="alert('🎬 播放视频（原型演示）')">
+          <div class="video-thumb vt1">
+            <span>🎥</span>
+            <div class="play-btn">▶</div>
+          </div>
+          <div class="video-info">
+            <div class="vid-title">二战全史：从凡尔赛到冷战</div>
+            <div class="vid-duration">🎬 共24集 · 每集45分钟</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">⭐ 4.9 · 12.8万播放</div>
+          </div>
+        </div>
+
+        <div class="video-card" onclick="alert('🎬 播放视频（原型演示）')">
+          <div class="video-thumb vt2">
+            <span>🎥</span>
+            <div class="play-btn">▶</div>
+          </div>
+          <div class="video-info">
+            <div class="vid-title">诺曼底登陆：D-Day 全纪实</div>
+            <div class="vid-duration">🎬 纪录片 · 90分钟</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">⭐ 4.8 · 8.3万播放</div>
+          </div>
+        </div>
+
+        <div class="video-card" onclick="alert('🎬 播放视频（原型演示）')">
+          <div class="video-thumb vt3">
+            <span>🎥</span>
+            <div class="play-btn">▶</div>
+          </div>
+          <div class="video-info">
+            <div class="vid-title">武器解码：二战坦克进化史</div>
+            <div class="vid-duration">🎬 科普系列 · 共8集</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">⭐ 4.7 · 6.5万播放</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+    PAGE 3: 探索 — 功能大厅
+    ================================================================ -->
+    <div class="page" id="page-explore">
+      <div class="status-bar">
+        <span>◉◉◉◉◉</span>
+        <span class="military-time">战区探索中心</span>
+        <span>⚡ ▮▮▮</span>
+      </div>
+      <div class="page-header">
+        <div class="overline">THEATER EXPLORATION · DISCOVER</div>
+        <h2>战区探索</h2>
+        <div class="subtitle">发现更多好玩的历史玩法</div>
+      </div>
+
+      <!-- 顶部 Banner -->
+      <div class="explore-banner">
+        <h3>⚜️ 欢迎来到探索中心</h3>
+        <p>沉浸式体验二战历史 · 测验、研讨、推演一网打尽</p>
+      </div>
+
+      <!-- 2列功能入口网格 -->
+      <div class="feature-grid">
+        <div class="feature-entry" onclick="openExploreSub('quiz')">
+          <span class="fe-icon">📋</span>
+          <div class="fe-title">情报测验</div>
+          <div class="fe-desc">500+精选二战题目<br>测测你的战史段位</div>
+          <span class="fe-badge">HOT</span>
+        </div>
+        <div class="feature-entry" onclick="openExploreSub('forum')">
+          <span class="fe-icon">⚔️</span>
+          <div class="fe-title">战史研讨</div>
+          <div class="fe-desc">军事爱好者社区<br>深度讨论每一场战役</div>
+        </div>
+        <div class="feature-entry" onclick="alert('🎲 战役推演功能开发中（原型演示）')">
+          <span class="fe-icon">🗡️</span>
+          <div class="fe-title">战役推演</div>
+          <div class="fe-desc">沙盘推演经典战役<br>如果你是指挥官...</div>
+          <span class="fe-badge">NEW</span>
+        </div>
+        <div class="feature-entry" onclick="alert('🏆 排行榜功能开发中（原型演示）')">
+          <span class="fe-icon">🏆</span>
+          <div class="fe-title">英雄榜</div>
+          <div class="fe-desc">测验排名 · 知识达人<br>看看谁是战史王</div>
+        </div>
+      </div>
+
+      <!-- 下方推荐内容 -->
+      <div class="explore-section-title">🔥 本周热门讨论</div>
+      <div class="forum-post" onclick="alert('📖 打开帖子详情（原型演示）')">
+        <div class="post-top">
+          <div class="avatar av1">🎖️</div>
+          <div><div class="author">隆美尔之狐</div><div class="post-time">2 小时前 · 北非战场研习组</div></div>
+        </div>
+        <div class="post-title">【深度】阿拉曼战役中装甲兵运用的战术得失</div>
+        <div class="post-excerpt">从后勤补给线、地形利用和装甲兵协同三个维度，重新审视这场北非战场的转折点...</div>
+        <div class="post-stats">❤️ 247 &nbsp; 💬 83 &nbsp; 📌 1.2k</div>
+      </div>
+      <div class="forum-post" onclick="alert('📖 打开帖子详情（原型演示）')">
+        <div class="post-top">
+          <div class="avatar av2">📡</div>
+          <div><div class="author">太平洋观察者</div><div class="post-time">5 小时前 · 海军战略版</div></div>
+        </div>
+        <div class="post-title">假如南云忠一在中途岛做出了不同的决策？</div>
+        <div class="post-excerpt">经典"反事实推演"——如果日军保留了机动部队主力，太平洋战局是否会被改写？</div>
+        <div class="post-stats">❤️ 412 &nbsp; 💬 156 &nbsp; 📌 2.8k</div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+    探索子页 A: 情报测验
+    ================================================================ -->
+    <div class="sub-page" id="sub-quiz">
+      <button class="btn-back" onclick="closeExploreSub()">◂ 返回探索中心</button>
+      <div class="page-header">
+        <div class="overline">INTELLIGENCE BRIEFING</div>
+        <h2>情报测验</h2>
+        <div class="subtitle">测测你的二战知识储备</div>
+      </div>
+      <div class="quiz-progress">
+        <div class="progress-bar"><div class="progress-fill" style="width:40%;"></div></div>
+        <span>2/5</span>
+      </div>
+      <div class="quiz-card">
+        <div class="q-meta"><span class="q-difficulty easy">初级</span><span class="q-category">⚔️ 欧洲战场</span></div>
+        <div class="q-text">1. 第二次世界大战欧洲战场爆发的标志性事件是？</div>
+        <div class="q-options">
+          <div class="q-option" onclick="selectQuizOption(this, true)">A. 德国入侵波兰</div>
+          <div class="q-option" onclick="selectQuizOption(this, false)">B. 珍珠港事件</div>
+          <div class="q-option" onclick="selectQuizOption(this, false)">C. 诺曼底登陆</div>
+          <div class="q-option" onclick="selectQuizOption(this, false)">D. 斯大林格勒战役</div>
+        </div>
+      </div>
+      <div class="quiz-card">
+        <div class="q-meta"><span class="q-difficulty medium">中级</span><span class="q-category">🌊 太平洋战场</span></div>
+        <div class="q-text">2. 中途岛海战发生于哪一年？此战被视为太平洋战场的转折点。</div>
+        <div class="q-options">
+          <div class="q-option" onclick="selectQuizOption(this, false)">A. 1941年</div>
+          <div class="q-option" onclick="selectQuizOption(this, true)">B. 1942年</div>
+          <div class="q-option" onclick="selectQuizOption(this, false)">C. 1943年</div>
+          <div class="q-option" onclick="selectQuizOption(this, false)">D. 1944年</div>
+        </div>
+      </div>
+      <div class="quiz-card">
+        <div class="q-meta"><span class="q-difficulty hard">高级</span><span class="q-category">📋 战略分析</span></div>
+        <div class="q-text">3. "霸王行动"（Operation Overlord）是二战中哪场战役的代号？</div>
+        <div class="q-options">
+          <div class="q-option" onclick="selectQuizOption(this, false)">A. 巴巴罗萨行动</div>
+          <div class="q-option" onclick="selectQuizOption(this, false)">B. 市场花园行动</div>
+          <div class="q-option" onclick="selectQuizOption(this, true)">C. 诺曼底登陆</div>
+          <div class="q-option" onclick="selectQuizOption(this, false)">D. 火炬行动</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:4px;">✦ 提交情报答卷</button>
+    </div>
+
+    <!-- ================================================================
+    探索子页 B: 战史研讨
+    ================================================================ -->
+    <div class="sub-page" id="sub-forum">
+      <button class="btn-back" onclick="closeExploreSub()">◂ 返回探索中心</button>
+      <div class="page-header">
+        <div class="overline">WAR COLLEGE · DISCUSSION</div>
+        <h2>战史研讨</h2>
+        <div class="subtitle">以史为鉴，可以知兴替</div>
+      </div>
+      <input type="text" class="search-input" placeholder="🔍  检索战役、人物、话题...">
+      <div class="tag-row">
+        <span class="tag-chip active">#欧洲战场#</span>
+        <span class="tag-chip inactive">#太平洋战争#</span>
+        <span class="tag-chip inactive">#名将评析#</span>
+        <span class="tag-chip inactive">#武器装备#</span>
+        <span class="tag-chip inactive">#战术推演#</span>
+      </div>
+      <div class="forum-post" onclick="alert('📖 打开帖子详情（原型演示）')">
+        <div class="post-top"><div class="avatar av1">🎖️</div><div><div class="author">隆美尔之狐</div><div class="post-time">2h前 · 北非战场研习组</div></div></div>
+        <div class="post-title">【深度】阿拉曼战役中装甲兵运用的战术得失</div>
+        <div class="post-excerpt">从后勤补给线、地形利用和装甲兵协同三个维度，重新审视这场北非战场的转折点。蒙哥马利与隆美尔的博弈...</div>
+        <div class="post-stats">❤️ 247 &nbsp; 💬 83 &nbsp; 📌 1.2k 阅读</div>
+      </div>
+      <div class="forum-post" onclick="alert('📖 打开帖子详情（原型演示）')">
+        <div class="post-top"><div class="avatar av2">📡</div><div><div class="author">太平洋观察者</div><div class="post-time">5h前 · 海军战略版</div></div></div>
+        <div class="post-title">假如南云忠一在中途岛做出了不同的决策？</div>
+        <div class="post-excerpt">一个经典的"反事实推演"——如果日军保留了机动部队主力，太平洋战局是否会被改写？</div>
+        <div class="post-stats">❤️ 412 &nbsp; 💬 156 &nbsp; 📌 2.8k 阅读</div>
+      </div>
+      <div class="forum-post" onclick="alert('📖 打开帖子详情（原型演示）')">
+        <div class="post-top"><div class="avatar av3">📚</div><div><div class="author">战史研究生</div><div class="post-time">昨天 · 学术讨论厅</div></div></div>
+        <div class="post-title">【资料整理】二战各主要参战国战时工业产能对比</div>
+        <div class="post-excerpt">整理了美、苏、德、英、日五国1939-1945年的钢产量、石油产量和飞机产量数据，附原始档案来源...</div>
+        <div class="post-stats">❤️ 189 &nbsp; 💬 42 &nbsp; 📌 956 阅读</div>
+      </div>
+      <div class="forum-post" onclick="alert('📖 打开帖子详情（原型演示）')">
+        <div class="post-top"><div class="avatar av1">🗺️</div><div><div class="author">地图收藏家</div><div class="post-time">3天前 · 资源分享区</div></div></div>
+        <div class="post-title">【高清地图】1944年诺曼底登陆作战全貌图</div>
+        <div class="post-excerpt">从英国国家档案馆获取的高分辨率扫描件，标注了五个登陆滩头的详细兵力部署...</div>
+        <div class="post-stats">❤️ 531 &nbsp; 💬 98 &nbsp; 📌 4.1k 阅读</div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+    PAGE 4: 我的 — 档案室
+    ================================================================ -->
+    <div class="page" id="page-my">
+      <div class="status-bar">
+        <span>◉◉◉◉◉</span>
+        <span class="military-time">档案中心</span>
+        <span>⚡ ▮▮▮</span>
+      </div>
+      <div class="profile-banner">
+        <div class="profile-avatar-lg">🎖️</div>
+        <div class="profile-name">战史研究员 · 李参谋</div>
+        <div class="profile-title">LEVEL 12 · 资深战史学者</div>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="stat-row-3">
+          <div class="stat-cell"><div class="stat-num">342</div><div class="stat-desc">已学战役</div></div>
+          <div class="stat-cell"><div class="stat-num">89%</div><div class="stat-desc">测验正确率</div></div>
+          <div class="stat-cell"><div class="stat-num">156</div><div class="stat-desc">论坛发帖</div></div>
+        </div>
+      </div>
+      <div class="card menu-list">
+        <div class="menu-row" onclick="alert('📊 学习数据统计（原型演示）')"><div class="menu-left"><span class="menu-icon">📊</span>学习报告</div><span class="menu-chevron">›</span></div>
+        <div class="menu-row" onclick="alert('🏅 成就与勋章（原型演示）')"><div class="menu-left"><span class="menu-icon">🏅</span>我的勋章</div><span class="menu-chevron">›</span></div>
+        <div class="menu-row" onclick="alert('📝 学习笔记（原型演示）')"><div class="menu-left"><span class="menu-icon">📝</span>学习笔记</div><span class="menu-chevron">›</span></div>
+        <div class="menu-row" onclick="alert('⭐ 收藏的战役（原型演示）')"><div class="menu-left"><span class="menu-icon">⭐</span>我的收藏</div><span class="menu-chevron">›</span></div>
+        <div class="menu-row" onclick="alert('⚙️ 设置（原型演示）')"><div class="menu-left"><span class="menu-icon">⚙️</span>档案设置</div><span class="menu-chevron">›</span></div>
+        <div class="menu-row" onclick="alert('ℹ️ 关于二战历史地图集')"><div class="menu-left"><span class="menu-icon">ℹ️</span>关于本集</div><span class="menu-chevron">›</span></div>
+      </div>
+      <button class="btn btn-outline" style="margin-top:8px;" onclick="navigateTo('auth')">◂ 退出档案室</button>
+    </div>
+
+    <!-- ================================================================
+    PAGE 5: 登录/注册
+    ================================================================ -->
+    <div class="page" id="page-auth">
+      <div class="auth-container">
+        <div class="auth-emblem">
+          <div class="emblem-icon">⚜️</div>
+          <h1>二战历史地图集</h1>
+          <div class="divider-military"><span class="dm-line"></span><span class="dm-star">✦</span><span class="dm-line"></span></div>
+          <p>World War II Interactive Atlas · 1939–1945</p>
+        </div>
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchAuthTab('login', this)">调取档案</button>
+          <button class="auth-tab" onclick="switchAuthTab('register', this)">建立新档</button>
+        </div>
+        <div class="auth-form" id="form-login">
+          <div class="input-group"><label>档案号（账号）</label><input type="text" placeholder="请输入您的档案编号"></div>
+          <div class="input-group"><label>密令（密码）</label><input type="password" placeholder="请输入密令"></div>
+          <div class="forgot">遗忘密令？</div>
+          <button class="btn btn-primary" onclick="navigateTo('home')">✦ 调取档案</button>
+        </div>
+        <div class="auth-form" id="form-register" style="display:none;">
+          <div class="input-group"><label>档案号（账号）</label><input type="text" placeholder="请创建您的档案编号"></div>
+          <div class="input-group"><label>密令（密码）</label><input type="password" placeholder="请设置密令（6-20位）"></div>
+          <div class="input-group"><label>确认密令</label><input type="password" placeholder="请再次输入密令"></div>
+          <button class="btn btn-primary" onclick="navigateTo('home')">✦ 建立档案并进入</button>
+        </div>
+        <div class="auth-alt"><span>本系统仅供战史研究使用 · 严守保密条例</span></div>
+      </div>
+    </div>
+
+  </div><!-- /screen -->
+
+  <!-- 底部导航栏 -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-item active" data-page="home" onclick="navigateTo('home')">
+      <span class="tab-icon">🗺️</span>
+      <span class="tab-label">态势图</span>
+    </button>
+    <button class="tab-item" data-page="classroom" onclick="navigateTo('classroom')">
+      <span class="tab-icon">📖</span>
+      <span class="tab-label">课堂</span>
+    </button>
+    <button class="tab-item" data-page="explore" onclick="navigateTo('explore')">
+      <span class="tab-icon">🧭</span>
+      <span class="tab-label">探索</span>
+    </button>
+    <button class="tab-item" data-page="my" onclick="navigateTo('my')">
+      <span class="tab-icon">🎖️</span>
+      <span class="tab-label">档案室</span>
+    </button>
+  </div>
+</div><!-- /phone-frame -->
+
+<script>
+// ===== 历史事件数据 =====
+const historicalEvents = [
+  { id:1,  title:"德国入侵波兰",           year:1939.7,  dateStr:"1939年9月1日",    lat:52.06, lng:19.25,  type:"axis",   desc:"二战欧洲战场爆发的标志。德军闪电战迅速击溃波兰防线，英法对德宣战。" },
+  { id:2,  title:"冬季战争",              year:1939.9,  dateStr:"1939年11月30日",  lat:60.17, lng:24.94,  type:"neutral",desc:"苏联入侵芬兰，芬兰以弱胜强给苏军造成重大伤亡，但最终割让领土。" },
+  { id:3,  title:"威瑟堡行动",            year:1940.3,  dateStr:"1940年4月9日",    lat:55.68, lng:12.57,  type:"axis",   desc:"德国入侵丹麦和挪威，确保北欧铁矿供应线。" },
+  { id:4,  title:"法国战役",              year:1940.4,  dateStr:"1940年5月10日",   lat:49.50, lng:2.50,   type:"axis",   desc:"德军绕过马奇诺防线闪击西欧，六周内迫使法国投降。" },
+  { id:5,  title:"敦刻尔克大撤退",         year:1940.4,  dateStr:"1940年5月26日",   lat:51.03, lng:2.38,   type:"neutral",desc:"约33万英法联军从敦刻尔克成功撤退至英国，保存了盟军有生力量。" },
+  { id:6,  title:"不列颠空战",            year:1940.6,  dateStr:"1940年7月10日",   lat:51.50, lng:-0.12,  type:"allied", desc:"德国空军对英国的大规模空袭，皇家空军英勇抵抗，希特勒首尝败绩。" },
+  { id:7,  title:"巴巴罗萨行动",           year:1941.5,  dateStr:"1941年6月22日",   lat:55.75, lng:37.62,  type:"axis",   desc:"纳粹德国撕毁条约悍然入侵苏联，苏德战争全面爆发。" },
+  { id:8,  title:"珍珠港事件",            year:1941.9,  dateStr:"1941年12月7日",   lat:21.36, lng:-157.95,type:"axis",   desc:"日本偷袭美国珍珠港，美国正式参战，太平洋战争爆发。" },
+  { id:9,  title:"中途岛海战",            year:1942.5,  dateStr:"1942年6月4日",    lat:28.20, lng:-177.35,type:"allied", desc:"太平洋战场的转折点，美军击沉日本四艘主力航母。" },
+  { id:10, title:"斯大林格勒战役",         year:1942.6,  dateStr:"1942年8月23日",   lat:48.70, lng:44.51,  type:"allied", desc:"二战最惨烈的战役之一，苏军歼灭德第六集团军，东线转折点。" },
+  { id:11, title:"阿拉曼战役",            year:1942.8,  dateStr:"1942年10月23日",  lat:30.83, lng:28.95,  type:"allied", desc:"蒙哥马利率英军在北非击败隆美尔，扭转北非战局。" },
+  { id:12, title:"库尔斯克会战",           year:1943.6,  dateStr:"1943年7月5日",    lat:51.72, lng:36.19,  type:"allied", desc:"史上最大规模的坦克会战，苏军取得决定性胜利。" },
+  { id:13, title:"意大利投降",            year:1943.7,  dateStr:"1943年9月8日",    lat:41.90, lng:12.50,  type:"allied", desc:"盟军登陆意大利后意大利宣布投降，轴心国开始瓦解。" },
+  { id:14, title:"德黑兰会议",            year:1943.9,  dateStr:"1943年11月28日",  lat:35.69, lng:51.39,  type:"allied", desc:"罗斯福、丘吉尔、斯大林首次会晤，商讨开辟第二战场。" },
+  { id:15, title:"诺曼底登陆(D-Day)",      year:1944.5,  dateStr:"1944年6月6日",    lat:49.33, lng:-0.88,  type:"allied", desc:"人类历史上最大规模的两栖登陆作战，开辟欧洲西线第二战场。" },
+  { id:16, title:"巴格拉季昂行动",         year:1944.5,  dateStr:"1944年6月22日",   lat:53.90, lng:27.57,  type:"allied", desc:"苏军在白俄罗斯发动大规模攻势，歼灭德军中央集团军群。" },
+  { id:17, title:"巴黎解放",              year:1944.6,  dateStr:"1944年8月25日",   lat:48.86, lng:2.35,   type:"allied", desc:"自由法国军队与盟军进入巴黎，法国重获自由。" },
+  { id:18, title:"突出部战役",            year:1944.9,  dateStr:"1944年12月16日",  lat:50.25, lng:5.50,   type:"allied", desc:"德军在西线发动的最后大规模反攻，虽初期成功但最终失败。" },
+  { id:19, title:"雅尔塔会议",            year:1945.1,  dateStr:"1945年2月4日",    lat:44.50, lng:34.17,  type:"allied", desc:"三巨头敲定战后世界格局，决定德国与欧洲的战后命运。" },
+  { id:20, title:"柏林战役",              year:1945.3,  dateStr:"1945年4月16日",   lat:52.52, lng:13.40,  type:"allied", desc:"苏军攻入柏林，希特勒自杀，欧战迎来终局。" },
+  { id:21, title:"德国无条件投降",         year:1945.4,  dateStr:"1945年5月8日",    lat:52.52, lng:13.38,  type:"allied", desc:"纳粹德国无条件投降，欧洲战场胜利（V-E Day）。" },
+  { id:22, title:"广岛与长崎原子弹",       year:1945.6,  dateStr:"1945年8月6日/9日",lat:34.39, lng:132.46, type:"allied", desc:"美国对日本投下两枚原子弹，加速了战争结束。" },
+  { id:23, title:"日本无条件投降",         year:1945.7,  dateStr:"1945年9月2日",    lat:35.68, lng:139.76, type:"allied", desc:"日本签署投降书，第二次世界大战正式结束（V-J Day）。" },
+];
+
+// ===== 地图 =====
+let map, currentMarkers = [], currentYear = 1939.0;
+
+function initMap() {
+  map = L.map('mapContainer', { center: [35, 25], zoom: 3, minZoom: 2, maxZoom: 7, zoomControl: false, attributionControl: false });
+  L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { subdomains: '1234', className: 'map-tiles' }).addTo(map);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 600);
+}
+function normalizeLng(l, r) { while (l - r > 180) l -= 360; while (l - r < -180) l += 360; return l; }
+function getVisibleLngCopies(lng) {
+  if (!map) return [lng];
+  const b = map.getBounds(), w = b.getWest(), e = b.getEast();
+  const base = normalizeLng(lng, map.getCenter().lng);
+  const copies = [];
+  for (let o = -720; o <= 720; o += 360) { const c = base + o; if (c >= w - 5 && c <= e + 5) copies.push(c); }
+  return copies.length ? copies : [base];
+}
+function getColor(t) { return t === 'allied' ? '#2c4a6e' : t === 'axis' ? '#8b2a2a' : '#b8935a'; }
+
+function updateTimeline(yearVal) {
+  currentYear = yearVal;
+  if (!map) return;
+  currentMarkers.forEach(m => map.removeLayer(m)); currentMarkers = [];
+  const dy = Math.floor(yearVal), dm = Math.floor((yearVal - dy) * 12) + 1;
+  document.getElementById('currentYearBadge').textContent = dy + '年';
+  document.getElementById('currentDateDisplay').textContent = dy + '年' + dm + '月';
+  historicalEvents.filter(e => e.year <= yearVal).forEach(ev => {
+    getVisibleLngCopies(ev.lng).forEach(dl => {
+      const mk = L.circleMarker([ev.lat, dl], { radius: 7, fillColor: getColor(ev.type), color: '#fff', weight: 1.5, opacity: 1, fillOpacity: 0.85 }).addTo(map);
+      mk.bindPopup(`<b>${ev.title}</b><br><small>${ev.dateStr}</small><br>${ev.desc}`);
+      mk.on('click', () => showEventDetail(ev)); currentMarkers.push(mk);
+    });
+  });
+  const lb = document.getElementById('eventLogList'); lb.innerHTML = '';
+  visible = historicalEvents.filter(e => e.year <= yearVal);
+  visible.slice().reverse().forEach(ev => {
+    const d = document.createElement('div'); d.className = 'event-snippet';
+    d.innerHTML = `<span class="event-dot ${ev.type}"></span><div class="event-info"><div class="event-name">${ev.title}</div><div class="event-date">${ev.dateStr}</div></div>`;
+    d.onclick = () => { map.flyTo([ev.lat, normalizeLng(ev.lng, map.getCenter().lng)], 6); showEventDetail(ev); };
+    lb.appendChild(d);
+  });
+}
+
+// ===== 页面导航 =====
+let currentMainPage = 'home';
+function navigateTo(name) {
+  // 如果当前在探索子页，先关闭
+  if (document.getElementById('sub-quiz').classList.contains('active') ||
+      document.getElementById('sub-forum').classList.contains('active')) {
+    closeExploreSub();
+  }
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pageMap = { 'auth':'page-auth','home':'page-home','classroom':'page-classroom','explore':'page-explore','my':'page-my' };
+  const el = document.getElementById(pageMap[name]);
+  if (el) el.classList.add('active');
+  currentMainPage = name;
+
+  const tabBar = document.getElementById('tabBar');
+  if (name === 'auth') {
+    tabBar.style.display = 'none';
+  } else {
+    tabBar.style.display = 'flex';
+    tabBar.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.page === name));
+  }
+  document.getElementById('screen').scrollTop = 0;
+  if (name === 'home' && map) setTimeout(() => map.invalidateSize(), 300);
+}
+
+// ===== 探索子页导航 =====
+function openExploreSub(name) {
+  // 隐藏探索主页
+  document.getElementById('page-explore').classList.remove('active');
+  // 显示子页
+  const subMap = { 'quiz':'sub-quiz', 'forum':'sub-forum' };
+  document.getElementById(subMap[name]).classList.add('active');
+  document.getElementById('screen').scrollTop = 0;
+}
+
+function closeExploreSub() {
+  document.querySelectorAll('.sub-page').forEach(s => s.classList.remove('active'));
+  document.getElementById('page-explore').classList.add('active');
+  document.getElementById('screen').scrollTop = 0;
+}
+
+// ===== 课堂文章/视频切换 =====
+function switchClassroomTab(type, btn) {
+  document.querySelectorAll('.classroom-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('content-articles').style.display = type === 'articles' ? 'block' : 'none';
+  document.getElementById('content-videos').style.display = type === 'videos' ? 'block' : 'none';
+}
+
+// ===== 登录/注册切换 =====
+function switchAuthTab(type, btn) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('form-login').style.display = type === 'login' ? 'block' : 'none';
+  document.getElementById('form-register').style.display = type === 'register' ? 'block' : 'none';
+}
+
+// ===== 测验选项 =====
+function selectQuizOption(el, correct) {
+  const siblings = el.parentElement.querySelectorAll('.q-option');
+  siblings.forEach(s => s.classList.remove('correct', 'wrong'));
+  if (correct) { el.classList.add('correct'); }
+  else { el.classList.add('wrong'); siblings.forEach(s => { if (s.onclick && s.onclick.toString().includes('true')) s.classList.add('correct'); }); }
+}
+
+// ===== 事件详情 =====
+function showEventDetail(ev) {
+  const tl = ev.type === 'allied' ? '同盟国胜利' : ev.type === 'axis' ? '轴心国行动' : '战果未决';
+  alert(`📋 ${ev.title}\n\n📅 ${ev.dateStr}\n🏷️ ${tl}\n\n📝 ${ev.desc}`);
+}
+
+// ===== 初始化 =====
+function init() {
+  const now = new Date();
+  document.getElementById('statusTime').textContent =
+    `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}Z · ARCHIVE`;
+
+  initMap();
+  document.getElementById('timelineSlider').addEventListener('input', e => updateTimeline(parseFloat(e.target.value)));
+  setTimeout(() => { if (map) map.invalidateSize(); updateTimeline(1939.0); }, 700);
+  if (map) map.on('moveend zoomend', () => { if (currentYear >= 1939) updateTimeline(currentYear); });
+  navigateTo('home');
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

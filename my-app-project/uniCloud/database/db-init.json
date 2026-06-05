@@ -1,0 +1,215 @@
+// ============================================
+// uniCloud 数据库表结构定义
+// 这些 schema 文件会在 HBuilderX 中自动生效
+// uni-id 的用户表由系统自动创建，不需要手动定义
+// ============================================
+
+// 论坛帖子表
+{
+  "posts": {
+    "bsonType": "object",
+    "required": ["title", "content", "authorId"],
+    "permission": {
+      "read": true,           // 所有人可读
+      "create": "auth.uid != null",  // 登录后可发帖
+      "update": "doc.authorId == auth.uid",  // 只能改自己的帖子
+      "delete": "doc.authorId == auth.uid"   // 只能删自己的帖子
+    },
+    "properties": {
+      "_id": { "description": "帖子ID，自动生成" },
+      "title": {
+        "bsonType": "string",
+        "description": "帖子标题",
+        "maxLength": 100,
+        "trim": "both"
+      },
+      "content": {
+        "bsonType": "string",
+        "description": "帖子内容（支持 Markdown）",
+        "maxLength": 10000
+      },
+      "authorId": {
+        "bsonType": "string",
+        "description": "作者用户ID，关联 uni-id-users 表",
+        "forceDefaultValue": {
+          "$env": "uid"  // 自动填入当前登录用户 ID
+        }
+      },
+      "category": {
+        "bsonType": "string",
+        "description": "分类标签",
+        "enum": ["欧洲战场", "太平洋战争", "名将评析", "武器装备", "战术推演", "资源分享", "其他"]
+      },
+      "tags": {
+        "bsonType": "array",
+        "description": "帖子标签",
+        "items": { "bsonType": "string" }
+      },
+      "likeCount": {
+        "bsonType": "int",
+        "description": "点赞数",
+        "defaultValue": 0
+      },
+      "viewCount": {
+        "bsonType": "int",
+        "description": "阅读数",
+        "defaultValue": 0
+      },
+      "commentCount": {
+        "bsonType": "int",
+        "description": "评论数",
+        "defaultValue": 0
+      },
+      "isPinned": {
+        "bsonType": "bool",
+        "description": "是否置顶",
+        "defaultValue": false
+      },
+      "createTime": {
+        "bsonType": "timestamp",
+        "description": "创建时间",
+        "forceDefaultValue": {
+          "$env": "now"
+        }
+      }
+    }
+  },
+
+  // 评论表
+  "comments": {
+    "bsonType": "object",
+    "required": ["postId", "content", "authorId"],
+    "permission": {
+      "read": true,
+      "create": "auth.uid != null",
+      "update": "doc.authorId == auth.uid",
+      "delete": "doc.authorId == auth.uid"
+    },
+    "properties": {
+      "_id": { "description": "评论ID，自动生成" },
+      "postId": {
+        "bsonType": "string",
+        "description": "所属帖子ID",
+        "foreignKey": "posts._id"
+      },
+      "content": {
+        "bsonType": "string",
+        "description": "评论内容",
+        "maxLength": 2000
+      },
+      "authorId": {
+        "bsonType": "string",
+        "description": "评论者ID",
+        "forceDefaultValue": { "$env": "uid" }
+      },
+      "replyTo": {
+        "bsonType": "string",
+        "description": "回复的目标评论ID（可选）"
+      },
+      "createTime": {
+        "bsonType": "timestamp",
+        "forceDefaultValue": { "$env": "now" }
+      }
+    }
+  },
+
+  // 文章表（课堂页内容）
+  "articles": {
+    "bsonType": "object",
+    "required": ["title", "content", "type"],
+    "permission": {
+      "read": true,
+      "create": false,  // 文章由管理员发布，普通用户不可创建
+      "update": false,
+      "delete": false
+    },
+    "properties": {
+      "_id": { "description": "文章ID" },
+      "title": { "bsonType": "string", "description": "文章标题" },
+      "content": { "bsonType": "string", "description": "文章正文（Markdown）" },
+      "excerpt": { "bsonType": "string", "description": "摘要", "maxLength": 200 },
+      "coverColor": { "bsonType": "string", "description": "封面渐变CSS类" },
+      "type": {
+        "bsonType": "string",
+        "description": "类型",
+        "enum": ["article", "video"]
+      },
+      "videoUrl": { "bsonType": "string", "description": "视频链接（type=video时使用）" },
+      "duration": { "bsonType": "string", "description": "视频时长/文章阅读时长" },
+      "wordCount": { "bsonType": "int", "description": "字数" },
+      "viewCount": { "bsonType": "int", "defaultValue": 0 },
+      "category": { "bsonType": "string", "description": "分类标签" },
+      "createTime": { "bsonType": "timestamp", "forceDefaultValue": { "$env": "now" } }
+    }
+  },
+
+  // 测验题目表
+  "quizQuestions": {
+    "bsonType": "object",
+    "required": ["question", "options", "answer", "difficulty"],
+    "permission": {
+      "read": true,
+      "create": false,
+      "update": false,
+      "delete": false
+    },
+    "properties": {
+      "_id": { "description": "题目ID" },
+      "question": { "bsonType": "string", "description": "题目内容" },
+      "options": {
+        "bsonType": "array",
+        "description": "选项列表",
+        "items": { "bsonType": "string" }
+      },
+      "answer": { "bsonType": "int", "description": "正确答案的索引（0-based）" },
+      "difficulty": {
+        "bsonType": "string",
+        "enum": ["easy", "medium", "hard"],
+        "description": "难度等级"
+      },
+      "category": { "bsonType": "string", "description": "分类" },
+      "explanation": { "bsonType": "string", "description": "答案解释" }
+    }
+  },
+
+  // 用户答题记录表
+  "quizRecords": {
+    "bsonType": "object",
+    "required": ["userId", "questionId"],
+    "permission": {
+      "read": "doc.userId == auth.uid",
+      "create": "auth.uid != null",
+      "update": "doc.userId == auth.uid",
+      "delete": false
+    },
+    "properties": {
+      "_id": { "description": "记录ID" },
+      "userId": {
+        "bsonType": "string",
+        "forceDefaultValue": { "$env": "uid" }
+      },
+      "questionId": { "bsonType": "string", "foreignKey": "quizQuestions._id" },
+      "userAnswer": { "bsonType": "int", "description": "用户选的答案" },
+      "isCorrect": { "bsonType": "bool", "description": "是否答对" },
+      "answeredAt": { "bsonType": "timestamp", "forceDefaultValue": { "$env": "now" } }
+    }
+  },
+
+  // 用户收藏表
+  "favorites": {
+    "bsonType": "object",
+    "required": ["userId", "targetId", "targetType"],
+    "permission": {
+      "read": "doc.userId == auth.uid",
+      "create": "auth.uid != null",
+      "delete": "doc.userId == auth.uid"
+    },
+    "properties": {
+      "_id": { "description": "收藏ID" },
+      "userId": { "bsonType": "string", "forceDefaultValue": { "$env": "uid" } },
+      "targetId": { "bsonType": "string", "description": "被收藏的内容ID" },
+      "targetType": { "bsonType": "string", "enum": ["post", "article", "event"], "description": "收藏类型" },
+      "createTime": { "bsonType": "timestamp", "forceDefaultValue": { "$env": "now" } }
+    }
+  }
+}

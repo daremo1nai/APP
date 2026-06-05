@@ -1,0 +1,16 @@
+// favorites.schema.json - 用户收藏
+{
+  "bsonType": "object",
+  "required": ["targetId", "targetType"],
+  "permission": {
+    "read": "doc.userId == auth.uid",
+    "create": "auth.uid != null",
+    "delete": "doc.userId == auth.uid"
+  },
+  "properties": {
+    "userId": { "bsonType": "string", "forceDefaultValue": { "$env": "uid" } },
+    "targetId": { "bsonType": "string" },
+    "targetType": { "bsonType": "string", "enum": ["post", "article", "event"] },
+    "createTime": { "bsonType": "timestamp", "forceDefaultValue": { "$env": "now" } }
+  }
+}

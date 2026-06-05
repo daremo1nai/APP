@@ -1,0 +1,18 @@
+// comments.schema.json - 评论表
+{
+  "bsonType": "object",
+  "required": ["postId", "content"],
+  "permission": {
+    "read": true,
+    "create": "auth.uid != null",
+    "update": "doc.authorId == auth.uid",
+    "delete": "doc.authorId == auth.uid"
+  },
+  "properties": {
+    "postId": { "bsonType": "string", "foreignKey": "posts._id" },
+    "content": { "bsonType": "string", "maxLength": 2000 },
+    "authorId": { "bsonType": "string", "forceDefaultValue": { "$env": "uid" } },
+    "replyTo": { "bsonType": "string" },
+    "createTime": { "bsonType": "timestamp", "forceDefaultValue": { "$env": "now" } }
+  }
+}

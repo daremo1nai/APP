@@ -1,0 +1,24 @@
+// articles.schema.json - 课堂文章/视频表
+{
+  "bsonType": "object",
+  "required": ["title", "content", "type"],
+  "permission": {
+    "read": true,
+    "create": false,
+    "update": false,
+    "delete": false
+  },
+  "properties": {
+    "title": { "bsonType": "string" },
+    "content": { "bsonType": "string" },
+    "excerpt": { "bsonType": "string", "maxLength": 200 },
+    "coverColor": { "bsonType": "string" },
+    "type": { "bsonType": "string", "enum": ["article", "video"] },
+    "videoUrl": { "bsonType": "string" },
+    "duration": { "bsonType": "string" },
+    "wordCount": { "bsonType": "int" },
+    "viewCount": { "bsonType": "int", "defaultValue": 0 },
+    "category": { "bsonType": "string" },
+    "createTime": { "bsonType": "timestamp", "forceDefaultValue": { "$env": "now" } }
+  }
+}
